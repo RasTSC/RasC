@@ -71,7 +71,7 @@ int main(int argc, char *argv[]) {
 			if (cntable[i] == 0) {
 
 				//test 5sec...
-				usleep(5000000);
+				//usleep(5000000);
 
 				if (connect(sock[i], (struct sockaddr*) &server_addr[i],
 						sizeof(server_addr[i])) == -1) {
