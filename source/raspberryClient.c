@@ -70,7 +70,7 @@ int main(int argc, char *argv[]) {
 		for (i = 0; i < MAX_SERVER; i++) {
 			if (cntable[i] == 0) {
 
-				//test 5sec....
+				//test 5sec...
 				usleep(5000000);
 
 				if (connect(sock[i], (struct sockaddr*) &server_addr[i],
