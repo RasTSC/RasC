@@ -4,13 +4,19 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
-../source/raspberryClient.c 
+../source/protocol.c \
+../source/raspberryClient.c \
+../source/serial.c 
 
 OBJS += \
-./source/raspberryClient.o 
+./source/protocol.o \
+./source/raspberryClient.o \
+./source/serial.o 
 
 C_DEPS += \
-./source/raspberryClient.d 
+./source/protocol.d \
+./source/raspberryClient.d \
+./source/serial.d 
 
 
 # Each subdirectory must supply rules for building sources it contributes

@@ -18,9 +18,11 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "Times.h"
+//#include "serial.h"
+#include "protocol.h"
 
 #define BUF_SIZE 1024
-#define MAX_SERVER 2
+#define MAX_SERVER 1
 #define PORT 1234
 #define IP1 "123.123.123.123"
 #define IP2 "123.123.123.123"
@@ -28,8 +30,8 @@
 int cntable[MAX_SERVER] = { 0, };
 
 void error_handling(char *message);
-void read_routine(int sock, char *buf);
-void read_childproc(int sig);
+void read_routine(/*int fd,*/ int sock, unsigned char *buf);
+void ctrl_childproc(int sig);
 
 int main(int argc, char *argv[]) {
 	int sock[MAX_SERVER];
@@ -37,7 +39,7 @@ int main(int argc, char *argv[]) {
 
 	pid_t pid;
 	struct sigaction act;
-	char buf[BUF_SIZE] = { 0, };
+	unsigned char buf[BUF_SIZE] = { 0, };
 	struct sockaddr_in server_addr[MAX_SERVER];
 
 	if (argc != ((2 * MAX_SERVER) + 1)) {
@@ -45,8 +47,11 @@ int main(int argc, char *argv[]) {
 		exit(1);
 	}
 
+	//serial open
+	//int serial_fd = serialOpen();
+
 	// signal setting
-	act.sa_handler = read_childproc;
+	act.sa_handler = ctrl_childproc;
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	if (sigaction(SIGCHLD, &act, 0) != 0)
@@ -86,32 +91,40 @@ int main(int argc, char *argv[]) {
 				}
 
 				if (pid == 0)
-					read_routine(sock[i], buf);
+					read_routine(/*serial_fd,*/ sock[i], buf);
 
 			}
 		}
 	}
-	close(sock);
+
+	for (i = 0; i < MAX_SERVER; i++)
+		close(sock[i]);
+
+	//serialClose(serial_fd);
+
 	return 0;
 }
 
-void read_routine(int sock, char *buf) {
+void read_routine(/*int fd,*/ int sock, unsigned char *buf) {
 
 	int tempSec = getSec();
-	int modSec = tempSec % 2;
-	printf("connetion time sec : %d, mod sec : %d\n", tempSec, modSec);
+	int OESec = tempSec % 2;
+	printf("connetion time -> sec : %d, odd-even : %d\n", tempSec, OESec);
 
 	while (1) {
 		int str_len = read(sock, buf, BUF_SIZE);
 		if (str_len == 0)
 			return;
 
+		dataCheck(str_len, buf);
+
 		buf[str_len] = 0;
 		printf("Message from server: %s\n", buf);
+		//serialWrite(fd, buf);
 	}
 }
 
-void read_childproc(int sig) {
+void ctrl_childproc(int sig) {
 	pid_t pid;
 	int status;
 	int i = 0;
