@@ -1,17 +1,22 @@
 /*
  ============================================================================
- Created on  : 2014. 9. 21.
- Name        : raspberryClient.c
- Author      : JeongHakOh
- Version     :
- Copyright   : JeongHakOh
- Description : C Language based Client, Ansi-style
+ Created on	:	2014. 9. 21.
+ Name			:	raspberryClient.c
+ Author		:	JeongHakOh
+ Version		:
+ Copyright		:	JeongHakOh
+ Description	:	C Language based Client, Ansi-style
+ URL			:	https://github.com/RasTSC/RasC
  ============================================================================
  */
 
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <dirent.h>
+#include <fcntl.h>
 #include <unistd.h>
 #include <signal.h>
 #include <sys/wait.h>
@@ -20,18 +25,21 @@
 #include "Times.h"
 //#include "serial.h"
 #include "protocol.h"
+#include "filectrl.h"
 
 #define BUF_SIZE 1024
 #define MAX_SERVER 1
 #define PORT 1234
 #define IP1 "123.123.123.123"
 #define IP2 "123.123.123.123"
+#define ENGINEROOM "log/engine/e_"
+#define BRIDGEROOM "log/bridge/b_"
 
 int cntable[MAX_SERVER] = { 0, };
 
-void error_handling(char *message);
-void read_routine(/*int fd,*/ int sock, unsigned char *buf);
+void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType);
 void ctrl_childproc(int sig);
+void error_handling(char *message);
 
 int main(int argc, char *argv[]) {
 	int sock[MAX_SERVER];
@@ -49,6 +57,10 @@ int main(int argc, char *argv[]) {
 
 	//serial open
 	//int serial_fd = serialOpen();
+
+	// make log file dir....
+	mkdir("log/engine", 0777);
+	mkdir("log/bridge", 0777);
 
 	// signal setting
 	act.sa_handler = ctrl_childproc;
@@ -91,7 +103,7 @@ int main(int argc, char *argv[]) {
 				}
 
 				if (pid == 0)
-					read_routine(/*serial_fd,*/ sock[i], buf);
+					read_routine(/*serial_fd,*/sock[i], buf, i);
 
 			}
 		}
@@ -105,10 +117,11 @@ int main(int argc, char *argv[]) {
 	return 0;
 }
 
-void read_routine(/*int fd,*/ int sock, unsigned char *buf) {
+void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 
 	int tempSec = getSec();
 	int OESec = tempSec % 2;
+
 	printf("connetion time -> sec : %d, odd-even : %d\n", tempSec, OESec);
 
 	while (1) {
@@ -116,7 +129,31 @@ void read_routine(/*int fd,*/ int sock, unsigned char *buf) {
 		if (str_len == 0)
 			return;
 
-		dataCheck(str_len, buf);
+		if (dataCheck(str_len, buf) == 1) {
+
+			char path[256] = { 0, };
+
+			switch (servType) {
+			case 0:
+				sprintf(path, "%s%4d_%2d_%2d_%2d_%2d_%2d.txt", ENGINEROOM,
+						getYear(), getMonth(), getDay(), getHour(), getMin(),
+						getSec());
+				printf("log file is : %s\n", path);
+				break;
+			case 1:
+				sprintf(path, "%s%4d_%2d_%2d_%2d_%2d_%2d.txt", BRIDGEROOM,
+						getYear(), getMonth(), getDay(), getHour(), getMin(),
+						getSec());
+				break;
+			}
+
+			fileWrite(path, buf);
+
+			if (fileRemove(servType)) {
+				printf("file remove error\n");
+			}
+
+		}
 
 		buf[str_len] = 0;
 		printf("Message from server: %s\n", buf);

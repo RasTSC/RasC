@@ -4,16 +4,19 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 C_SRCS += \
+../source/filectrl.c \
 ../source/protocol.c \
 ../source/raspberryClient.c \
 ../source/serial.c 
 
 OBJS += \
+./source/filectrl.o \
 ./source/protocol.o \
 ./source/raspberryClient.o \
 ./source/serial.o 
 
 C_DEPS += \
+./source/filectrl.d \
 ./source/protocol.d \
 ./source/raspberryClient.d \
 ./source/serial.d 

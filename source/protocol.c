@@ -18,59 +18,50 @@
 //						: Protocol Data Check Sum								//
 //							(received message)									//
 //////////////////////////////////////////////////////////////////////////////////////
-int dataCheck(int readSize, unsigned char *rs232c_buf)
-{
+int dataCheck(int readSize, unsigned char *rs232c_buf) {
 
 	unsigned char checksum = 0;
-	int index = 1;
+	int index = 0;
 
 	printf("readSize = %d\n", readSize);
-	if (readSize <= 0 || readSize > INBUF_MAX)
-	{
+	if (readSize <= 0 || readSize > INBUF_MAX) {
 		return 0;
 	}
 
-	while (index < readSize-2)
-	{
-		if (c_state == IDLE)
-		{
+	while (index < readSize - 2) {
+		if (c_state == IDLE) {
 			c_state =
 					(rs232c_buf[0] == '$' || rs232c_buf[0] == '#') ?
 							PAYLOAD : IDLE;
 			index++;
-		}
-		else if (c_state == PAYLOAD)
-		{
-			printf("add msp_buf[%d] = %c, checksum = (%%c)%c, (%%x)%x\n", index, rs232c_buf[index], checksum, checksum);
+		} else if (c_state == PAYLOAD) {
+
+			printf("add msp_buf[%d] = %c, checksum = (%%c)%c, (%%x)%x\n", index,
+					rs232c_buf[index], checksum, checksum);
 			checksum ^= (rs232c_buf[index++] & 0xFF);
 
+			c_state = (rs232c_buf[index] == '*') ? CHECKSTAR : PAYLOAD;
+
+		} else if (c_state == CHECKSTAR) {
+			index++;
+			printf("index(%d)\n", index);
 		}
 	}
 
-	if(c_state == IDLE)
-	{
-		printf("not header '$' | '#'\n");
-		return 0;
-	}
-
-	if(rs232c_buf[index+1] == checksum)
-	{
-		printf("checksum = %x\n", rs232c_buf[index+1]);
+	if (rs232c_buf[index + 1] == checksum) {
+		printf("data true... checksum = %x\n", rs232c_buf[index + 1]);
+		c_state = IDLE;
 		return 1;
-	}
-	else if(c_state == IDLE)
-	{
+	} else if (c_state == IDLE) {
 		printf("not header '$' | '#'\n");
 		return 0;
-	}
-	else
-	{
+	} else {
 		printf("not checksum = %x\n", rs232c_buf[index]);
+		c_state = IDLE;
 		return 0;
 	}
 }
 //////////////////////////////////////////////////////////////////////////////////////
-
 
 //////////////////////////////////////////////////////////////////////////////////////
 //							evaluateCommand() Definition						//
