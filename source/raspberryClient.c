@@ -68,7 +68,7 @@ int main(int argc, char *argv[]) {
 	sigemptyset(&act.sa_mask);
 	act.sa_flags = 0;
 	if (sigaction(SIGCHLD, &act, 0) != 0)
-		error_handling("LOG ( Sigaction() error. )\n");
+		error_handling("LOG ( Sigaction() error. ) \n");
 
 	bzero((char *) &server_addr, sizeof(server_addr));
 	for (i = 0; i < MAX_SERVER; i++) {
