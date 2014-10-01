@@ -52,8 +52,7 @@ int fileRemove(int servType) {
 	memset(&buf, '\0', sizeof(buf));
 
 	// current work dir....
-	switch(servType)
-	{
+	switch (servType) {
 	case 0:
 		chdir("\log//engine");
 		break;
@@ -84,20 +83,20 @@ int fileRemove(int servType) {
 			}
 		}
 
-	if (count > 3) {
+		if (count > 3) {
 
-		temp = dir_name[0];
+			temp = dir_name[0];
 
-		for (i = 1; i < count; i++) {
+			for (i = 1; i < count; i++) {
 
-			if (strcmp(temp, dir_name[i]) > 0)
-				temp = dir_name[i];
+				if (strcmp(temp, dir_name[i]) > 0)
+					temp = dir_name[i];
+			}
+
+			printf("\nremove file : %s\n", temp);
+			remove(temp);
+
 		}
-
-		printf("\nremove file : %s\n", temp);
-		remove(temp);
-
-	}
 
 //		printf("file is : ");
 //		for (i = 0; i < count - 1; i++) {

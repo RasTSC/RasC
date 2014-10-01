@@ -29,9 +29,10 @@
 
 #define BUF_SIZE 1024
 #define MAX_SERVER 1
-#define PORT 1234
-#define IP1 "123.123.123.123"
-#define IP2 "123.123.123.123"
+#define INITFILE "init.txt"
+#define PORT "1234"
+//#define ENGINEIP "127.0.0.1"
+//#define BRIDGEIP "127.0.0.1"
 #define ENGINEROOM "log/engine/e_"
 #define BRIDGEROOM "log/bridge/b_"
 
@@ -43,6 +44,7 @@ void error_handling(char *message);
 
 int main(int argc, char *argv[]) {
 	int sock[MAX_SERVER];
+	int *iptable[MAX_SERVER] = { 0, }; //{ ENGINEIP, BRIDGEIP };
 	int i = 0;
 
 	pid_t pid;
@@ -50,10 +52,37 @@ int main(int argc, char *argv[]) {
 	unsigned char buf[BUF_SIZE] = { 0, };
 	struct sockaddr_in server_addr[MAX_SERVER];
 
-	if (argc != ((2 * MAX_SERVER) + 1)) {
-		printf("Usage : %s <IP1> <port> <IP2> <port>\n", argv[0]);
-		exit(1);
+	FILE *fp = fopen(INITFILE, "r");
+	char iptemp[255];
+	char *p;
+	while (!feof(fp))  // 파일의 끝이 아니라면
+	{
+		fgets(iptemp, 255, fp);  // 최대 80칸짜리 한줄 읽기
+
+		p = strtok(iptemp, ":");
+		if (strcmp(iptemp, "e") == 0) {
+			p = strtok(NULL, " ");
+			if (p == NULL)
+				break;
+			else
+				iptable[0] = p;
+			//printf("iptable[0] = %s\n", iptable[0]);
+		} else if (strcmp(iptemp, "b") == 0) {
+			p = strtok(NULL, " ");
+			if (p == NULL)
+				break;
+			else
+				iptable[1] = p;
+			//printf("iptable[1] = %s\n", iptable[1]);
+		}
 	}
+
+	fclose(fp);
+
+//	if (argc != ((2 * MAX_SERVER) + 1)) {
+//		printf("Usage : %s <IP1> <port> <IP2> <port>\n", argv[0]);
+//		exit(1);
+//	}
 
 	//serial open
 	//int serial_fd = serialOpen();
@@ -79,8 +108,8 @@ int main(int argc, char *argv[]) {
 
 		// socket addr setting
 		server_addr[i].sin_family = AF_INET;
-		server_addr[i].sin_addr.s_addr = inet_addr(argv[((2 * i) + 1)]);
-		server_addr[i].sin_port = htons(atoi(argv[((2 * i) + 2)]));
+		server_addr[i].sin_addr.s_addr = inet_addr(iptable[i]);	//argv[((2 * i) + 1)]);
+		server_addr[i].sin_port = htons(atoi(PORT));	//argv[((2 * i) + 2)]);
 	}
 
 	while (1) {
