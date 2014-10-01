@@ -149,6 +149,12 @@ int main(int argc, char *argv[]) {
 
 void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 
+	ostime pt, ct;
+	pt = pointTime();
+
+	printf("read_routine %04d_%02d_%02d_%02d_%02d_%02d\n", pt.y, pt.mon, pt.d,
+			pt.h, pt.min, pt.s);
+
 	int tempSec = getSec();
 	int OESec = tempSec % 2;
 
@@ -163,17 +169,17 @@ void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 
 			char path[256] = { 0, };
 
+			ct = pointTime();
+
 			switch (servType) {
 			case 0:
-				sprintf(path, "%s%4d_%2d_%2d_%2d_%2d_%2d.txt", ENGINEROOM,
-						getYear(), getMonth(), getDay(), getHour(), getMin(),
-						getSec());
+				sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", ENGINEROOM,
+						ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
 				printf("log file is : %s\n", path);
 				break;
 			case 1:
-				sprintf(path, "%s%4d_%2d_%2d_%2d_%2d_%2d.txt", BRIDGEROOM,
-						getYear(), getMonth(), getDay(), getHour(), getMin(),
-						getSec());
+				sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", BRIDGEROOM,
+						ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
 				break;
 			}
 

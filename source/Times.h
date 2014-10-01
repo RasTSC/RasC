@@ -15,6 +15,15 @@
 #include <stdio.h>
 #include <time.h>
 
+typedef struct _offsettime{
+	int y;
+	int mon;
+	int d;
+	int h;
+	int min;
+	int s;
+}ostime;
+
 int getYear() {
 	time_t sysTime;
 	struct tm *tmp;
@@ -67,6 +76,17 @@ int getSec() {
 	tmp = localtime(&sysTime);
 
 	return tmp->tm_sec;
+}
+
+ostime pointTime() {
+	ostime pt;
+	pt.y = getYear();
+	pt.mon = getMonth();
+	pt.d = getDay();
+	pt.h = getHour();
+	pt.min = getMin();
+	pt.s = getSec();
+	return pt;
 }
 
 #endif /* TIMES_H_ */
