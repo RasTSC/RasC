@@ -165,6 +165,7 @@ void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 		if (str_len == 0)
 			return;
 
+		// 나중에 여러개의 프로토콜이 들어왔을 경우 체크섬 하는 내용 datacheck 함수에 추가하기...
 		if (dataCheck(str_len, buf) == 1) {
 
 			char path[256] = { 0, };
@@ -185,6 +186,12 @@ void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 
 			fileWrite(path, buf);
 
+			if(((pt.h+1)%24) == ct.h)
+			{
+				//sendFileData(sfd, path);
+				pt = ct;
+			}
+
 			if (fileRemove(servType)) {
 				printf("file remove error\n");
 			}
@@ -193,7 +200,7 @@ void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 
 		buf[str_len] = 0;
 		printf("Message from server: %s\n", buf);
-		//serialWrite(fd, buf);
+		//serialWrite(sfd, buf);
 	}
 }
 
