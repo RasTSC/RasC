@@ -54,10 +54,10 @@ int fileRemove(int servType) {
 	// current work dir....
 	switch (servType) {
 	case 0:
-		chdir("\log//engine");
+		chdir(ENGINELOG);
 		break;
 	case 1:
-		chdir("\log//bridge");
+		chdir(BRIDGELOG);
 		break;
 	}
 

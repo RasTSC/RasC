@@ -22,6 +22,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define ENGINELOG "log//engine"
+#define BRIDGELOG "log//bridge"
+
 extern unsigned char *nonHeader(unsigned char *str);
 extern int fileWrite(char *path, unsigned char *buf);
 extern int fileRemove(int servType);

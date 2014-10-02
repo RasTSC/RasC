@@ -44,7 +44,7 @@ void error_handling(char *message);
 
 int main(int argc, char *argv[]) {
 	int sock[MAX_SERVER];
-	int *iptable[MAX_SERVER] = { 0, }; //{ ENGINEIP, BRIDGEIP };
+	char *iptable[MAX_SERVER] = { 0, }; //{ ENGINEIP, BRIDGEIP };
 	int i = 0;
 
 	pid_t pid;
