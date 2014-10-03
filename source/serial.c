@@ -10,6 +10,7 @@
  */
 
 #include "serial.h"
+#include "filectrl.h"
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                                function define                        //
@@ -20,15 +21,13 @@ int serialOpen();
 void serialClose(int fd);
 
 //file data read write
-void sendFileData(int fd, char *filename);
+void sendFileData(int fd, char *filename, int dataType);
 void readFileData(int fd, char *filename);
 
 // msg data read write
 void serialWrite(int fd, char *msg_buf);
 void serialRead(int fd, char *msg_buf);
 //////////////////////////////////////////////////////////////////////////////////////
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                                  Serial Open                          //
@@ -79,8 +78,6 @@ int serialOpen() {
 }
 //////////////////////////////////////////////////////////////////////////////////////
 
-
-
 //////////////////////////////////////////////////////////////////////////////////////
 //                                  Serial Close                         //
 //////////////////////////////////////////////////////////////////////////////////////
@@ -90,68 +87,99 @@ void serialClose(int fd) {
 }
 //////////////////////////////////////////////////////////////////////////////////////
 
-
-
 //////////////////////////////////////////////////////////////////////////////////////
 //                                  Send File Data                       //
 //////////////////////////////////////////////////////////////////////////////////////
 
-void sendFileData(int fd, char *filename) {
+void sendFileData(int fd, char *filename, int dataType) {
+
 	FILE *fp = fopen(filename, "rb");
 	if (fp == NULL)
 		exit(0);
 
-	fseek(fp, 0, 2);
+	unsigned char *buf;
+	char *start[2] = { "E\n", "B\n" };
+	char *end = "\nF";
 
-	long FileSize = ftell(fp);
-	long buffsize = 0;
-	char buf[SBUF_SIZE];
+	fseek(fp, 0, SEEK_END);
+	long int FileSize = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
 
-	fseek(fp, 0, 0);
+	buf = (unsigned char*) malloc(FileSize);
 
-	while (FileSize > 0) {
-		if (FileSize > DATA_MAX)
-			buffsize = DATA_MAX;
-		else
-			buffsize = FileSize;
+	fread(buf, FileSize, 1, fp);
+	fclose(fp);
 
-		fread(buf, buffsize, 1, fp);
-		if (write(fd, buf, buffsize) < 0) {
-			printf("writing Error\n");
-			exit(0);
-		}
+	printf("fread : %s\n", buf);
 
-		FileSize -= buffsize;
-
-		bzero(buf, SBUF_SIZE);
+	if (write(fd, start[dataType], strlen(start[dataType])) < 0) {
+		printf("file start writing Error\n");
+		exit(0);
+	}
+	while (write(fd, buf, FileSize) < 0) {
+		printf("writing Error\n");
+		exit(0);
 	}
 
-	bzero(buf, SBUF_SIZE);
-	fclose(fp);
+	if (write(fd, end, strlen(end)) < 0) {
+		printf("file end writing Error\n");
+		exit(0);
+	}
+
+	free(buf);
 }
 //////////////////////////////////////////////////////////////////////////////////////
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                                  Read File Data                       //
 //////////////////////////////////////////////////////////////////////////////////////
 
 void readFileData(int fd, char *filename) {
-	FILE *fp = fopen(filename, "wb");
-	if (fp == NULL)
-		exit(0);
 
-	char buf[SBUF_SIZE];
+	int dataType = 0;
+	unsigned char buf[4] = { 0, };
+	char path[255] = { 0, };
 
-	while (read(fd, buf, SBUF_SIZE) > 0) {
-		fwrite(buf, sizeof(buf), 1, fp);
-		bzero(buf, SBUF_SIZE);
+	if (read(fd, buf, 1) > 0) {
+
+		if (strcmp(buf, "E") == 0) {
+
+			dataType = 0;
+			sprintf(path, "%s%s", ENGINEROOM, filename);
+		} else if (strcmp(buf, "B") == 0) {
+
+			dataType = 1;
+			sprintf(path, "%s%s", BRIDGEROOM, filename);
+		}
+
+		FILE *fp = fopen(path, "wb+");
+		if (fp == NULL) {
+			printf("file open error\n");
+			exit(0);
+		}
+
+		//fprintf(stdout, "%s", buf);
+		fprintf(fp, "%s", buf);
+
+		while (1) {
+			if (read(fd, buf, 1) > 0) {
+				//fprintf(stdout, "%s", buf);
+				fprintf(fp, "%s", buf);
+			}
+			if (strcmp(buf, "F") == 0)
+				break;
+		}
+		printf("fclose()\n");
+		fclose(fp);
+
+		printf("dataType = %d\n", dataType);
+		if (fileRemove(dataType)) {
+			printf("file remove error\n");
+		}
 	}
+	tcdrain(fd);
 }
 //////////////////////////////////////////////////////////////////////////////////////
-
-
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                                Serial msg write                       //
@@ -167,17 +195,14 @@ void serialWrite(int fd, char *msg_buf) {
 }
 //////////////////////////////////////////////////////////////////////////////////////
 
-
-
 //////////////////////////////////////////////////////////////////////////////////////
 //                                Serial msg read                        //
 //////////////////////////////////////////////////////////////////////////////////////
 
-void serialRead(int fd, char *msg_buf)
-{
+void serialRead(int fd, char *msg_buf) {
 	int read_cnt = read(fd, msg_buf, SBUF_SIZE);
 
-	if(read_cnt > 0)
+	if (read_cnt > 0)
 		printf("read : %s\n", msg_buf);
 
 	tcdrain(fd);

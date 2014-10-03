@@ -23,69 +23,71 @@
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include "Times.h"
-//#include "serial.h"
+#include "serial.h"
 #include "protocol.h"
 #include "filectrl.h"
 
 #define BUF_SIZE 1024
-#define MAX_SERVER 1
-#define INITFILE "init.txt"
-#define PORT "1234"
-//#define ENGINEIP "127.0.0.1"
-//#define BRIDGEIP "127.0.0.1"
+#define MAX_SERVER 2
+//#define INITFILE "init.txt"
+#define PORT "1003"//"1234"
+#define ENGINEIP "192.168.0.11"//"127.0.0.1"
+#define BRIDGEIP "192.168.0.10"//"127.0.0.1"
+
+//#ifndef SERIAL_H_
 #define ENGINEROOM "log/engine/e_"
 #define BRIDGEROOM "log/bridge/b_"
+//#endif
 
 int cntable[MAX_SERVER] = { 0, };
 
-void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType);
+void read_routine(int sfd, int sock, unsigned char *buf, int servType);
 void ctrl_childproc(int sig);
 void error_handling(char *message);
 
 int main(int argc, char *argv[]) {
 	int sock[MAX_SERVER];
-	char *iptable[MAX_SERVER] = { 0, }; //{ ENGINEIP, BRIDGEIP };
+	char *iptable[MAX_SERVER] = { ENGINEIP, BRIDGEIP };
 	int i = 0;
 
 	pid_t pid;
 	struct sigaction act;
 	unsigned char buf[BUF_SIZE] = { 0, };
 	struct sockaddr_in server_addr[MAX_SERVER];
+	/*
+	 FILE *fp = fopen(INITFILE, "r");
+	 char iptemp[255];
+	 char *p;
+	 while (!feof(fp))  // 파일의 끝이 아니라면
+	 {
+	 fgets(iptemp, 255, fp);  // 최대 80칸짜리 한줄 읽기
 
-	FILE *fp = fopen(INITFILE, "r");
-	char iptemp[255];
-	char *p;
-	while (!feof(fp))  // 파일의 끝이 아니라면
-	{
-		fgets(iptemp, 255, fp);  // 최대 80칸짜리 한줄 읽기
+	 p = strtok(iptemp, ":");
+	 if (strcmp(iptemp, "e") == 0) {
+	 p = strtok(NULL, " ");
+	 if (p == NULL)
+	 break;
+	 else
+	 iptable[0] = p;
+	 //printf("iptable[0] = %s\n", iptable[0]);
+	 } else if (strcmp(iptemp, "b") == 0) {
+	 p = strtok(NULL, " ");
+	 if (p == NULL)
+	 break;
+	 else
+	 iptable[1] = p;
+	 //printf("iptable[1] = %s\n", iptable[1]);
+	 }
+	 }
 
-		p = strtok(iptemp, ":");
-		if (strcmp(iptemp, "e") == 0) {
-			p = strtok(NULL, " ");
-			if (p == NULL)
-				break;
-			else
-				iptable[0] = p;
-			//printf("iptable[0] = %s\n", iptable[0]);
-		} else if (strcmp(iptemp, "b") == 0) {
-			p = strtok(NULL, " ");
-			if (p == NULL)
-				break;
-			else
-				iptable[1] = p;
-			//printf("iptable[1] = %s\n", iptable[1]);
-		}
-	}
-
-	fclose(fp);
-
+	 fclose(fp);
+	 */
 //	if (argc != ((2 * MAX_SERVER) + 1)) {
 //		printf("Usage : %s <IP1> <port> <IP2> <port>\n", argv[0]);
 //		exit(1);
 //	}
-
-	//serial open
-	//int serial_fd = serialOpen();
+//serial open
+	int serial_fd = serialOpen();
 
 	// make log file dir....
 	mkdir("log", 0777);
@@ -133,7 +135,7 @@ int main(int argc, char *argv[]) {
 				}
 
 				if (pid == 0)
-					read_routine(/*serial_fd,*/sock[i], buf, i);
+					read_routine(serial_fd, sock[i], buf, i);
 
 			}
 		}
@@ -142,12 +144,12 @@ int main(int argc, char *argv[]) {
 	for (i = 0; i < MAX_SERVER; i++)
 		close(sock[i]);
 
-	//serialClose(serial_fd);
+	serialClose(serial_fd);
 
 	return 0;
 }
 
-void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
+void read_routine(int sfd, int sock, unsigned char *buf, int servType) {
 
 	ostime pt, ct;
 	pt = pointTime();
@@ -166,37 +168,42 @@ void read_routine(/*int fd,*/int sock, unsigned char *buf, int servType) {
 			return;
 
 		// 나중에 여러개의 프로토콜이 들어왔을 경우 체크섬 하는 내용 datacheck 함수에 추가하기...
-		if (dataCheck(str_len, buf) == 1) {
+		//if (dataCheck(str_len, buf) == 1) {
 
-			char path[256] = { 0, };
+		char path[256] = { 0, };
 
-			ct = pointTime();
+		ct = pointTime();
 
-			switch (servType) {
-			case 0:
-				sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", ENGINEROOM,
-						ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
-				printf("log file is : %s\n", path);
-				break;
-			case 1:
-				sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", BRIDGEROOM,
-						ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
-				break;
-			}
+		switch (servType) {
+		case 0:
+			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", ENGINEROOM,
+					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			printf("log file : %s\n", path);
+			break;
+		case 1:
+			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", BRIDGEROOM,
+					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			break;
+		}
 
-			fileWrite(path, buf);
+		fileWrite(path, buf);
 
-			if(((pt.h+1)%24) == ct.h)
-			{
-				//sendFileData(sfd, path);
-				pt = ct;
-			}
+		if ((((pt.min + 1) % 60) == ct.min) && (servType == 0)) {
+			pt = ct;
+			sendFileData(sfd, path, servType);
 
-			if (fileRemove(servType)) {
-				printf("file remove error\n");
-			}
+		} else if (((((pt.min + 1) % 60) == ct.min)
+				&& (((pt.s + 3) % 60) == ct.s)) && (servType == 1)) {
+			pt = ct;
+			sendFileData(sfd, path, servType);
 
 		}
+
+		if (fileRemove(servType)) {
+			printf("file remove error\n");
+		}
+
+		//}//edit-checksum if
 
 		buf[str_len] = 0;
 		printf("Message from server: %s\n", buf);

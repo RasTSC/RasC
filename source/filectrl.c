@@ -26,9 +26,7 @@ int fileWrite(char *path, unsigned char *buf) {
 		return 0;
 	}
 
-	unsigned char *tmpstr = nonHeader(buf);
-//	fprintf(fp, "buf : %s", buf);
-	fprintf(fp, "tmp : %s", tmpstr);
+	fprintf(fp, "%s", buf);
 
 	fclose(fp);
 
@@ -68,7 +66,7 @@ int fileRemove(int servType) {
 		return 1;
 	} else {
 
-		printf("\n\n\t%s\n\n", pwd);
+		printf("\n\npwd : \t%s\n\n", pwd);
 
 		while ((pde = readdir(pdir)) != NULL) {
 			lstat(pde->d_name, &buf);
@@ -97,16 +95,6 @@ int fileRemove(int servType) {
 			remove(temp);
 
 		}
-
-//		printf("file is : ");
-//		for (i = 0; i < count - 1; i++) {
-////		printf("%s\t", dir_name[i]);
-//
-//			if (strcmp(dir_name[i], dir_name[i + 1]) < 0)
-//				printf("%s\t", dir_name[i]);
-//
-//		}
-//		printf("\n");
 
 		closedir(pdir);
 
