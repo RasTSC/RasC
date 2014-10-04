@@ -30,8 +30,8 @@
 #define BUF_SIZE 1024
 #define MAX_SERVER 2
 //#define INITFILE "init.txt"
-#define PORT "1003"//"1234"
-#define ENGINEIP "192.168.0.11"//"127.0.0.1"
+#define PORT "1003"
+#define ENGINEIP "192.168.0.11"//"192.168.0.11"
 #define BRIDGEIP "192.168.0.10"//"127.0.0.1"
 
 //#ifndef SERIAL_H_
@@ -41,6 +41,7 @@
 
 int cntable[MAX_SERVER] = { 0, };
 
+void test_routine(int sock, unsigned char *buf, int servType);
 void read_routine(int sfd, int sock, unsigned char *buf, int servType);
 void ctrl_childproc(int sig);
 void error_handling(char *message);
@@ -50,7 +51,6 @@ int main(int argc, char *argv[]) {
 	char *iptable[MAX_SERVER] = { ENGINEIP, BRIDGEIP };
 	int i = 0;
 
-	pid_t pid;
 	struct sigaction act;
 	unsigned char buf[BUF_SIZE] = { 0, };
 	struct sockaddr_in server_addr[MAX_SERVER];
@@ -86,9 +86,8 @@ int main(int argc, char *argv[]) {
 //		printf("Usage : %s <IP1> <port> <IP2> <port>\n", argv[0]);
 //		exit(1);
 //	}
-//serial open
-	int serial_fd = serialOpen();
-
+	//serial open
+	//int serial_fd = serialOpen();
 	// make log file dir....
 	mkdir("log", 0777);
 	mkdir("log/engine", 0777);
@@ -115,38 +114,93 @@ int main(int argc, char *argv[]) {
 	}
 
 	while (1) {
-
 		for (i = 0; i < MAX_SERVER; i++) {
 			if (cntable[i] == 0) {
 
-				//test 5sec...
-				//usleep(5000000);
+				int cnState = connect(sock[i],
+						(struct sockaddr*) &server_addr[i],
+						sizeof(server_addr[i]));
 
-				if (connect(sock[i], (struct sockaddr*) &server_addr[i],
-						sizeof(server_addr[i])) == -1) {
-					puts("LOG ( connect() error. )\n");
+				if (cnState != -1) {
 
-				} else
-					puts("LOG ( New client connected... )");
+					pid_t pid = fork();
+					if (pid > 0) { // parent process routine
+						cntable[i] = pid;
+						printf("parent(%d) table in child pid : %d\n\n", getpid(), cntable[i]);
+						printf("cntable[0] = %d\ncntable[1] = %d\n", cntable[0],
+								cntable[1]);
+					} else if (pid == 0) {  // child process routine
 
-				if ((pid = fork())) {
-					cntable[i] = pid;
-					printf("in child : %d\n", pid);
+						if (cnState == -1) {
+							printf(
+									"LOG ( iptable[%d] is connect(%s:%d) error. )\n\n",
+									i, iptable[i], atoi(PORT));
+							close(sock[i]);
+							exit(1);
+
+						} else {
+							printf(
+									"LOG (iptable[%d] New client connected... : %s:%d)\n\n",
+									i, iptable[i], atoi(PORT));
+
+							test_routine(sock[i], buf, i);
+							//read_routine(serial_fd, sock[i], buf, i);
+
+						}
+					}
 				}
-
-				if (pid == 0)
-					read_routine(serial_fd, sock[i], buf, i);
-
 			}
 		}
 	}
 
-	for (i = 0; i < MAX_SERVER; i++)
-		close(sock[i]);
-
-	serialClose(serial_fd);
+	//serialClose(serial_fd);
 
 	return 0;
+}
+
+void test_routine(int sock, unsigned char *buf, int servType) {
+
+	ostime pt, ct;
+	pt = pointTime();
+
+	printf("read_routine %04d_%02d_%02d_%02d_%02d_%02d\n", pt.y, pt.mon, pt.d,
+			pt.h, pt.min, pt.s);
+
+	int tempSec = getSec();
+	int OESec = tempSec % 2;
+
+	printf("connetion time -> sec : %d, odd-even : %d\n", tempSec, OESec);
+
+	while (1) {
+		int str_len = read(sock, buf, BUF_SIZE);
+		if (str_len == 0)
+			return;
+
+		char path[256] = { 0, };
+
+		ct = pointTime();
+
+		switch (servType) {
+		case 0:
+			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", ENGINEROOM,
+					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			printf("log file : %s\n", path);
+			break;
+		case 1:
+			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", BRIDGEROOM,
+					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			break;
+		}
+
+		fileWrite(path, buf);
+
+		if (fileRemove(servType)) {
+			printf("file remove error\n");
+		}
+
+		buf[str_len] = 0;
+		printf("Message from server: %s\n", buf);
+	}
 }
 
 void read_routine(int sfd, int sock, unsigned char *buf, int servType) {
@@ -219,7 +273,7 @@ void ctrl_childproc(int sig) {
 	printf("LOG ( Removed proc id: %d ) \n", pid);
 	for (i = 0; i < MAX_SERVER; i++) {
 		if (cntable[i] == pid) {
-			printf("LOG ( Removed cntable id: %d ) \n", cntable[i]);
+			printf("LOG ( Removed cntable[ %d ] id: %d ) \n", i, cntable[i]);
 			cntable[i] = 0;
 		}
 	}
