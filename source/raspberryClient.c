@@ -35,8 +35,6 @@
 #define BRIDGEIP "192.168.0.10"//"127.0.0.1"
 
 //#ifndef SERIAL_H_
-#define ENGINEROOM "log/engine/e_"
-#define BRIDGEROOM "log/bridge/b_"
 //#endif
 
 int cntable[MAX_SERVER] = { 0, };
@@ -87,11 +85,12 @@ int main(int argc, char *argv[]) {
 //		exit(1);
 //	}
 	//serial open
-	//int serial_fd = serialOpen();
+	int serial_fd = serialOpen();
+
 	// make log file dir....
-	mkdir("log", 0777);
-	mkdir("log/engine", 0777);
-	mkdir("log/bridge", 0777);
+	mkdir(ROOT, 0777);
+	mkdir(ENGINE, 0777);
+	mkdir(BRIDGE, 0777);
 
 	// signal setting
 	act.sa_handler = ctrl_childproc;
@@ -126,7 +125,8 @@ int main(int argc, char *argv[]) {
 					pid_t pid = fork();
 					if (pid > 0) { // parent process routine
 						cntable[i] = pid;
-						printf("parent(%d) table in child pid : %d\n\n", getpid(), cntable[i]);
+						printf("parent(%d) table in child pid : %d\n\n",
+								getpid(), cntable[i]);
 						printf("cntable[0] = %d\ncntable[1] = %d\n", cntable[0],
 								cntable[1]);
 					} else if (pid == 0) {  // child process routine
@@ -143,9 +143,9 @@ int main(int argc, char *argv[]) {
 									"LOG (iptable[%d] New client connected... : %s:%d)\n\n",
 									i, iptable[i], atoi(PORT));
 
-							test_routine(sock[i], buf, i);
-							//read_routine(serial_fd, sock[i], buf, i);
-
+							//test_routine(sock[i], buf, i);
+							read_routine(serial_fd, sock[i], buf, i);
+							exit(0);
 						}
 					}
 				}
@@ -153,17 +153,16 @@ int main(int argc, char *argv[]) {
 		}
 	}
 
-	//serialClose(serial_fd);
+	serialClose(serial_fd);
 
 	return 0;
 }
 
 void test_routine(int sock, unsigned char *buf, int servType) {
-
 	ostime pt, ct;
 	pt = pointTime();
 
-	printf("read_routine %04d_%02d_%02d_%02d_%02d_%02d\n", pt.y, pt.mon, pt.d,
+	printf("test_routine %04d_%02d_%02d_%02d_%02d_%02d\n", pt.y, pt.mon, pt.d,
 			pt.h, pt.min, pt.s);
 
 	int tempSec = getSec();
@@ -173,22 +172,25 @@ void test_routine(int sock, unsigned char *buf, int servType) {
 
 	while (1) {
 		int str_len = read(sock, buf, BUF_SIZE);
-		if (str_len == 0)
-			return;
+		if (str_len <= 0)
+			break;  //return;
 
 		char path[256] = { 0, };
+		char filename[256] = { 0, };
 
 		ct = pointTime();
 
 		switch (servType) {
 		case 0:
-			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", ENGINEROOM,
-					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(filename, "e_%04d_%02d_%02d_%02d_%02d_%02d.txt", ct.y,
+					ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(path, "%s/%s", ENGINE, filename);
 			printf("log file : %s\n", path);
 			break;
 		case 1:
-			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", BRIDGEROOM,
-					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(filename, "e_%04d_%02d_%02d_%02d_%02d_%02d.txt", ct.y,
+					ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(path, "%s/%s", BRIDGE, filename);
 			break;
 		}
 
@@ -218,38 +220,42 @@ void read_routine(int sfd, int sock, unsigned char *buf, int servType) {
 
 	while (1) {
 		int str_len = read(sock, buf, BUF_SIZE);
-		if (str_len == 0)
-			return;
+		if (str_len <= 0)
+			break;  //return;
 
 		// 나중에 여러개의 프로토콜이 들어왔을 경우 체크섬 하는 내용 datacheck 함수에 추가하기...
 		//if (dataCheck(str_len, buf) == 1) {
 
 		char path[256] = { 0, };
+		char filename[256] = { 0, };
 
 		ct = pointTime();
 
 		switch (servType) {
 		case 0:
-			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", ENGINEROOM,
-					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(filename, "e_%04d_%02d_%02d_%02d_%02d_%02d.txt", ct.y,
+					ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(path, "%s/%s", ENGINE, filename);
 			printf("log file : %s\n", path);
 			break;
 		case 1:
-			sprintf(path, "%s%04d_%02d_%02d_%02d_%02d_%02d.txt", BRIDGEROOM,
-					ct.y, ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(filename, "b_%04d_%02d_%02d_%02d_%02d_%02d.txt", ct.y,
+					ct.mon, ct.d, ct.h, ct.min, ct.s);
+			sprintf(path, "%s/%s", BRIDGE, filename);
 			break;
 		}
 
+		buf[str_len] = 0;
+
 		fileWrite(path, buf);
 
-		if ((((pt.min + 1) % 60) == ct.min) && (servType == 0)) {
+		if (((ct.s % 5) == 0) && (servType == 0)) {
 			pt = ct;
-			sendFileData(sfd, path, servType);
+			sendFileData(sfd, path, filename, servType);
 
-		} else if (((((pt.min + 1) % 60) == ct.min)
-				&& (((pt.s + 3) % 60) == ct.s)) && (servType == 1)) {
+		} else if (((ct.s % 5) == 0) && (servType == 1)) {
 			pt = ct;
-			sendFileData(sfd, path, servType);
+			sendFileData(sfd, path, filename, servType);
 
 		}
 
@@ -259,9 +265,9 @@ void read_routine(int sfd, int sock, unsigned char *buf, int servType) {
 
 		//}//edit-checksum if
 
-		buf[str_len] = 0;
 		printf("Message from server: %s\n", buf);
 		//serialWrite(sfd, buf);
+		memset(buf, 0, sizeof(buf));
 	}
 }
 

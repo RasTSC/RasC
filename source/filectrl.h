@@ -22,6 +22,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
+#define ROOT "log"
+#define ENGINE "log/engine"
+#define BRIDGE "log/bridge"
 #define ENGINELOG "log//engine"
 #define BRIDGELOG "log//bridge"
 

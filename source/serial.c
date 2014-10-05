@@ -10,7 +10,6 @@
  */
 
 #include "serial.h"
-#include "filectrl.h"
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                                function define                        //
@@ -21,8 +20,8 @@ int serialOpen();
 void serialClose(int fd);
 
 //file data read write
-void sendFileData(int fd, char *filename, int dataType);
-void readFileData(int fd, char *filename);
+void sendFileData(int fd, char *path, char *filename, int dataType);
+void readFileData(int fd);
 
 // msg data read write
 void serialWrite(int fd, char *msg_buf);
@@ -91,15 +90,19 @@ void serialClose(int fd) {
 //                                  Send File Data                       //
 //////////////////////////////////////////////////////////////////////////////////////
 
-void sendFileData(int fd, char *filename, int dataType) {
+void sendFileData(int fd, char *path, char *filename, int dataType) {
 
-	FILE *fp = fopen(filename, "rb");
-	if (fp == NULL)
+	FILE *fp = fopen(path, "rb");
+	if (fp == NULL) {
+		printf("sendFileData file open error\n");
 		exit(0);
+	}
 
 	unsigned char *buf;
-	char *start[2] = { "E\n", "B\n" };
-	char *end = "\nF";
+	char sHeader[256] = { 0, };
+	char *end = "!";
+
+	sprintf(sHeader, "#@%s", filename);
 
 	fseek(fp, 0, SEEK_END);
 	long int FileSize = ftell(fp);
@@ -112,8 +115,8 @@ void sendFileData(int fd, char *filename, int dataType) {
 
 	printf("fread : %s\n", buf);
 
-	if (write(fd, start[dataType], strlen(start[dataType])) < 0) {
-		printf("file start writing Error\n");
+	if (write(fd, sHeader, strlen(sHeader)) < 0) {
+		printf("Serial header writing Error\n");
 		exit(0);
 	}
 	while (write(fd, buf, FileSize) < 0) {
@@ -126,6 +129,8 @@ void sendFileData(int fd, char *filename, int dataType) {
 		exit(0);
 	}
 
+	printf("serial file send sucess\n");
+
 	free(buf);
 }
 //////////////////////////////////////////////////////////////////////////////////////
@@ -134,48 +139,52 @@ void sendFileData(int fd, char *filename, int dataType) {
 //                                  Read File Data                       //
 //////////////////////////////////////////////////////////////////////////////////////
 
-void readFileData(int fd, char *filename) {
+void readFileData(int fd) {
 
 	int dataType = 0;
-	unsigned char buf[4] = { 0, };
+	unsigned char buf[1024] = { 0, };
 	char path[255] = { 0, };
+	char filename[256] = { 0, };
+	char *p;
 
-	if (read(fd, buf, 1) > 0) {
+	if (read(fd, buf, 1024) > 0) {
 
-		if (strcmp(buf, "E") == 0) {
-
-			dataType = 0;
-			sprintf(path, "%s%s", ENGINEROOM, filename);
-		} else if (strcmp(buf, "B") == 0) {
-
-			dataType = 1;
-			sprintf(path, "%s%s", BRIDGEROOM, filename);
+		p = strtok(buf, "@");
+		if (strcmp(p, "#") == 0) {
+			sprintf(filename, "%s", p);
+			p = strtok(filename, "_");
+			if (strcmp(p, "e") == 0) {
+				dataType = 0;
+				sprintf(path, "%s/%s", ENGINE, filename);
+			} else if (strcmp(p, "b") == 0) {
+				dataType = 1;
+				sprintf(path, "%s/%s", BRIDGE, filename);
+			}
 		}
 
-		FILE *fp = fopen(path, "wb+");
+		FILE *fp = fopen(path, "wb");
 		if (fp == NULL) {
 			printf("file open error\n");
 			exit(0);
 		}
 
 		//fprintf(stdout, "%s", buf);
-		fprintf(fp, "%s", buf);
+		//fprintf(fp, "%s", buf);
 
-		while (1) {
-			if (read(fd, buf, 1) > 0) {
-				//fprintf(stdout, "%s", buf);
+		while (read(fd, buf, 1) > 0) {
+			//fprintf(stdout, "%s", buf);
+			fprintf(fp, "%s", buf);
+			if (buf != NULL)
 				fprintf(fp, "%s", buf);
-			}
-			if (strcmp(buf, "F") == 0)
-				break;
 		}
+
 		printf("fclose()\n");
 		fclose(fp);
 
 		printf("dataType = %d\n", dataType);
-		if (fileRemove(dataType)) {
-			printf("file remove error\n");
-		}
+//		if (fileRemove(dataType)) {
+//			printf("file remove error\n");
+//		}
 	}
 	tcdrain(fd);
 }

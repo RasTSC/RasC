@@ -19,6 +19,7 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include "filectrl.h"
 
 //////////////////////////////////////////////////////////////////////////////////////
 //                           Serial settings define                      //
@@ -26,16 +27,9 @@
 
 //  B300, B1200, B4800, B9600, B19200, B38400, B57600, B115200
 #define BAUDRATE B4800
-#define MODEDEVICE "/dev/ttyUSB0"
+#define MODEDEVICE "/dev/ttyAMA0"
 #define DATA_MAX 20
 #define SBUF_SIZE 255
-
-#ifndef ENGINEROOM
-#define ENGINEROOM "log/engine/e_"
-#endif
-#ifndef BRIDGEROOM
-#define BRIDGEROOM "log/bridge/b_"
-#endif
 //////////////////////////////////////////////////////////////////////////////////////
 
 
@@ -49,8 +43,8 @@ extern int serialOpen();
 extern void serialClose(int fd);
 
 //file data read write
-extern void sendFileData(int fd, char *filename, int dataType);
-extern void readFileData(int fd, char *filename);
+extern void sendFileData(int fd, char *path, char *filename, int dataType);
+extern void readFileData(int fd);
 
 // msg data read write
 extern void serialWrite(int fd, char *msg_buf);

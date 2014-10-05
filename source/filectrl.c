@@ -18,7 +18,7 @@ unsigned char *nonHeader(unsigned char *str) {
 
 int fileWrite(char *path, unsigned char *buf) {
 
-	FILE *fp = fopen(path, "w+");
+	FILE *fp = fopen(path, "w");
 
 	if (fp == NULL) {
 		printf("fopen() ERROR\n");
